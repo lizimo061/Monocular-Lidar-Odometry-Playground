@@ -19,10 +19,15 @@ class Image{
         using landmark_idx_t = size_t;
         using img_idx_t = size_t;
 
-        cv::Mat downsampleImg(int rate);
+        Image();
+        Image(std::string fileName);
+
+        void downsampleImg(int rate);
         bool kp_match_exist(size_t kp_idx, size_t img_idx) { return kp_matches[kp_idx].count(img_idx) > 0; };
         bool kp_3d_exist(size_t kp_idx) { return kp_landmark.count(kp_idx) > 0; }
         
+        void featureExtraction(const cv::Ptr<cv::FeatureDetector> detector);
+
     private:
         std::map<kp_idx_t, std::map<img_idx_t, kp_idx_t>> kp_matches; // keypoint matches in other images
         std::map<kp_idx_t, landmark_idx_t> kp_landmark; // keypoint to 3d points
