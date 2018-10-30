@@ -6,7 +6,7 @@
                 "type": "shell",
                 "command": "g++",
                 "args": [
-                    "-std=c++11",  "image.cpp", "-I/usr/local/include", "-lopencv_core", "-lopencv_imgcodecs", "-lopencv_imgproc", "-omatching", "-lopencv_highgui"
+                    "-std=c++11",  "image.cpp", "-I/usr/local/include", "-lopencv_core", "-lopencv_imgcodecs", "-lopencv_imgproc","-lopencv_xfeatures2d","-lopencv_features2d", "-omatching", "-lopencv_highgui"
                 ],
                 "group": {
                     "kind": "build",

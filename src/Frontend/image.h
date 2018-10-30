@@ -6,6 +6,7 @@
 #include <map>
 #include <string>
 #include <opencv2/features2d.hpp>
+#include <opencv2/xfeatures2d.hpp>
 #include <opencv2/highgui.hpp>
 #include <opencv2/opencv.hpp>
 
@@ -16,7 +17,7 @@ class Image {
   std::vector<cv::KeyPoint> kp;
 
   cv::Mat T;  // Pose matrix 4x4
-  cv::Mat P;  // Prokection matrix 3x4
+  cv::Mat P;  // Projection matrix 3x4
 
   using kp_idx_t = size_t;
   using landmark_idx_t = size_t;
