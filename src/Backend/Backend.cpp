@@ -1,4 +1,4 @@
-/**/Users/zimoli/Documents/Monocular-Lidar-Odometry-Playground/src/Backend/Backend.cpp
+/* /Users/zimoli/Documents/Monocular-Lidar-Odometry-Playground/src/Backend/Backend.cpp
  * @file Backend.cpp
  * @author Zimo Li (zimol@andrew.cmu.edu)
  * @date 2018-10-11
@@ -37,4 +37,3 @@ void addNewPose(double timestamp, const gtsam::Pose3& odom_pose, const gtsam::Po
 gtsam::Pose3 getPoseEstimate(int idx){
 
 }
-
