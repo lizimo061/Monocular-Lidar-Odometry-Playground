@@ -5,24 +5,31 @@
 #include <iostream>
 #include <map>
 #include <string>
-#include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
 #include <pcl/registration/icp.h>
 #include <Eigen/Dense>
 
+using namespace Eigen;
+
+struct singleScan{
+  pcl::PointCloud<pcl::PointXYZI>::Ptr raw_cloud;
+  Matrix3d R; // Transformation from current frame to
+  Vector3d t;
+};
 
 class Lidar{
   public:
-    struct singleScan{
-      pcl::PointCloud<pcl::PointXYZ>::Ptr raw_cloud;
-      Eigen::Matrix3d R; // Transformation from current frame to
-      Eigen::Vector3d t;
-    };
     std::vector<singleScan> lidarScans;
 
-  private:
     Lidar();
-    Lidar(std::string dir);
+    Lidar(std::string fileName);
+    ~Lidar();
     void addScan(std::string fileName);
-    void ICPTransform();
+
+  private:
+    int numOfScans;
+
+    void ICPTransform(int source, int target);
 };
+
+#endif

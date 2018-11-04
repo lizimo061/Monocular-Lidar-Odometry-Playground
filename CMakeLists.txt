@@ -1,0 +1,34 @@
+
+cmake_minimum_required(VERSION 2.8.9)
+project(test)
+
+
+#set(CMAKE_CXX_FLAGS "-std=c++11")
+set(CMAKE_BUILD_TYPE Debug)
+
+find_package(OpenCV REQUIRED)
+find_package(PCL REQUIRED)
+find_package(Boost COMPONENTS system REQUIRED)
+
+#Bring the headers, such as Student.h into the project
+include_directories(
+	include
+	${OpenCV_INCLUDE_DIRS} 
+	${PCL_INCLUDE_DIRS}
+	/usr/include/eigen3
+	/usr/local/include
+)
+
+add_library(lidar
+	src/lidar.cpp
+)
+ 
+add_executable(test_lidar test_lidar.cpp)
+
+target_link_libraries(test_lidar 
+		${OpenCV_LIBS} 
+		${PCL_LIBRARIES}
+		${Boost_LIBRARIES}
+		lidar		
+		-lboost_system		
+		)
