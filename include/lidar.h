@@ -8,6 +8,8 @@
 #include <pcl/point_types.h>
 #include <pcl/registration/icp.h>
 #include <Eigen/Dense>
+#include <gtsam/geometry/Pose3.h>
+
 
 using namespace Eigen;
 
@@ -25,7 +27,7 @@ class Lidar{
     Lidar(std::string fileName);
     ~Lidar();
     void addScan(std::string fileName);
-
+    gtsam::Pose3 convert2GTSAM(int i);
   private:
     int numOfScans;
 

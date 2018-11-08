@@ -41,11 +41,15 @@ public:
 
 	void addFirstPose(double timestamp, const gtsam::Pose3& pose);
 
-	void addNewPose(double timestamp, const gtsam::Pose3& odom_pose, const gtsam::Pose3& odom_diff);
+	void addNewPose(double timestamp, const gtsam::Pose3& odom_pose, const gtsam::Pose3& odom_diff, int pose_id);
 
 	gtsam::Pose3 getPoseEstimate(int idx);
 	
-	//TODO: More functions
+	void addLandMark(double timestamp, const gtsam::Point3& point, int landmark_id);
+
+	void addPixelMeasurement(double timestamp, const gtsam::Point2& pixel, int pose_id, int landmark_id)
+
+	void initializeK(double fx, double fy, double cx, double cy, double s);
 
 private:
 	int pose_num_;
@@ -59,9 +63,9 @@ private:
 	gtsam::LevenbergMarquardtParams LM_params_;
 	gtsam::NonlinearFactorGraph graph_;
 	gtsam::Values initial_estimates_, current_estimates_;
-	gtsam::noiseModel::Diagonal::shared_ptr pose_prior_;
+	gtsam::noiseModel::Diagonal::shared_ptr pose_prior_, mono_meas_noise_, point_noise_, calib_prior_;
 
-		
+	gtsam::Cal3_S2::shared_ptr K;
 };
 
 #endif
