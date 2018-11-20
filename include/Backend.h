@@ -41,7 +41,7 @@ public:
 
 	void addFirstPose(double timestamp, const gtsam::Pose3& pose);
 
-	void addNewPose(double timestamp, const gtsam::Pose3& odom_pose, const gtsam::Pose3& odom_diff, int pose_id);
+	void addNewPose(double timestamp, const gtsam::Pose3& odom_diff, int pose_id);
 
 	gtsam::Pose3 getPoseEstimate(int idx);
 	
@@ -62,8 +62,8 @@ private:
 	gtsam::GaussNewtonParams GN_params_;
 	gtsam::LevenbergMarquardtParams LM_params_;
 	gtsam::NonlinearFactorGraph graph_;
-	gtsam::Values initial_estimates_, current_estimates_;
-	gtsam::noiseModel::Diagonal::shared_ptr pose_prior_, mono_meas_noise_, point_noise_, calib_prior_;
+	gtsam::Values initial_estimates_, current_estimates_, result;
+	gtsam::noiseModel::Diagonal::shared_ptr pose_prior_, mono_meas_noise_, point_noise_, calib_prior_, odom_noise_;
 
 	gtsam::Cal3_S2::shared_ptr K;
 };

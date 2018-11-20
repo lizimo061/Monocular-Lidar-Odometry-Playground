@@ -22,7 +22,7 @@ Backend::Backend(BackendParams bp){
 }
 
 void Backend::solve(){
-
+	result = gtsam::LevenbergMarquardtOptimizer(graph_, initial_estimates_).optimize();
 }
 
 void Backend::addFirstPose(double timestamp, const gtsam::Pose3& pose){
@@ -34,7 +34,11 @@ void Backend::addFirstPose(double timestamp, const gtsam::Pose3& pose){
   	timestamps_.push_back(timestamp);
 }
 
-void Backend::addNewPose(double timestamp, const gtsam::Pose3& odom_pose, const gtsam::Pose3& odom_diff, int pose_id){
+void Backend::addNewPose(double timestamp, const gtsam::Pose3& odom_diff, int pose_id){
+	pose_num_++;
+	gtsam::Pose3 initial_pose = current_estimates_.at<gtsam::Pose3>(X(pose_num_ - 1))*odom_diff;
+	initial_estimates_.insert(X(pose_num_), initial_pose);
+	graph_.add(gtsam::BetweenFactor<gtsam::Pose3>(X(pose_num_-1), X(pose_num_), odom_diff, odom_noise_));
 
 }
 
