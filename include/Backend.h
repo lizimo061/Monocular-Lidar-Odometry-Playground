@@ -9,7 +9,12 @@
 #define BACKEND_H
 
 #include <iostream>
-
+#include <gtsam/geometry/Cal3_S2.h>
+#include <gtsam/inference/Symbol.h>
+#include <gtsam/slam/PriorFactor.h>
+#include <gtsam/slam/BetweenFactor.h>
+#include <gtsam/slam/GeneralSFMFactor.h>
+#include <gtsam/nonlinear/Marginals.h>
 #include <gtsam/geometry/Pose3.h>
 #include <gtsam/nonlinear/NonlinearFactorGraph.h>
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
@@ -47,9 +52,11 @@ public:
 	
 	void addLandMark(double timestamp, const gtsam::Point3& point, int landmark_id);
 
-	void addPixelMeasurement(double timestamp, const gtsam::Point2& pixel, int pose_id, int landmark_id)
+	void addPixelMeasurement(double timestamp, const gtsam::Point2& pixel, int pose_id, int landmark_id);
 
 	void initializeK(double fx, double fy, double cx, double cy, double s);
+
+
 
 private:
 	int pose_num_;
@@ -65,7 +72,7 @@ private:
 	gtsam::Values initial_estimates_, current_estimates_, result;
 	gtsam::noiseModel::Diagonal::shared_ptr pose_prior_, mono_meas_noise_, point_noise_, calib_prior_, odom_noise_;
 
-	gtsam::Cal3_S2::shared_ptr K;
+	gtsam::Cal3_S2::shared_ptr K_cal;
 };
 
 #endif

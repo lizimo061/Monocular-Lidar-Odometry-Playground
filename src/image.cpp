@@ -10,15 +10,25 @@ Image::Image() {
 
 Image::Image(std::string fileName) {
     img = imread(fileName);
+    cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
+}
+
+Image::Image(cv::String fileName) {
+    img = imread(fileName);
+    cv::cvtColor(img, img, cv::COLOR_BGR2GRAY);
 }
 
 void Image::downsampleImg(int rate) {
     resize(img, img, img.size()/rate);
 }
 
-void Image::featureExtraction(const Ptr<FeatureDetector> detector) {
+void Image::featureExtraction(const Ptr<FeatureDetector>& detector) {
     detector->detect(img, kp);
     detector->compute(img, kp, desc);
+}
+
+void Image::addMatchId(int kp_idx, int img_idx, int dest_kp_idx){
+	kp_matches[kp_idx][img_idx] = dest_kp_idx;
 }
 
 // int main(int argc, char** argv) {

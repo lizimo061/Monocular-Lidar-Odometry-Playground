@@ -5,10 +5,6 @@
  * @brief Backend for pose estimation
  */
 
-#include <gtsam/inference/Symbol.h>
-#include <gtsam/slam/PriorFactor.h>
-#include <gtsam/slam/BetweenFactor.h>
-#include <gtsam/nonlinear/Marginals.h>
 
 #include "Backend.h"
 
@@ -16,6 +12,7 @@ using gtsam::symbol_shorthand::X; // Pose3, x y z r p y
 using gtsam::symbol_shorthand::V; // Velocity, x_dot y_dot z_dot
 using gtsam::symbol_shorthand::B; // Bias, ax ay az gx gy gz
 using gtsam::symbol_shorthand::L; // Landmarks
+using gtsam::symbol_shorthand::K; // Calibration
 
 Backend::Backend(BackendParams bp){
 	pose_prior_ = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(0.1)).finished());
@@ -23,6 +20,10 @@ Backend::Backend(BackendParams bp){
 
 void Backend::solve(){
 	result = gtsam::LevenbergMarquardtOptimizer(graph_, initial_estimates_).optimize();
+}
+
+void Backend::initializeK(double fx, double fy, double cx, double cy, double s){
+
 }
 
 void Backend::addFirstPose(double timestamp, const gtsam::Pose3& pose){
@@ -53,5 +54,5 @@ void Backend::addLandMark(double timestamp, const gtsam::Point3& point, int land
 }
 
 void Backend::addPixelMeasurement(double timestamp, const gtsam::Point2& pixel, int pose_id, int landmark_id){
-	graph_.add(gtsam::GeneralSFMFactor2<Cal3_S2>(pixel, mono_meas_noise_, X(pose_id), L(landmark_id), K));
+	graph_.add(gtsam::GeneralSFMFactor2<gtsam::Cal3_S2>(pixel, mono_meas_noise_, X(pose_id), L(landmark_id), K(0)));
 }
