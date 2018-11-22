@@ -64,7 +64,7 @@ def main():
         ind_pair.append((ind, curr_match))
 
 
-    """
+    
     # Read image
     match_id = 0
     for file in files:
@@ -73,11 +73,11 @@ def main():
             curr_t = msg.header.stamp.to_nsec()/1e9
             if topic == args.img_topic and curr_t == match_pair[match_id][0]:
                 cv_img = cvbridge_obj.imgmsg_to_cv2(msg, desired_encoding="bgr8")
-                cv2.imwrite(os.path.join(args.output_dir, "%i.png" % match_id), cv_img)
+                cv2.imwrite(os.path.join(args.output_dir, "%06i.png" % match_id), cv_img)
                 print "Saving image %i" % match_id
                 match_id += 1
         bag.close()
-    """
+    
     # Read LiDAR 
     match_id = 0
     scans = os.listdir(args.raw_dir)
@@ -87,7 +87,7 @@ def main():
 
         if abs(curr_t - Decimal(match_pair[match_id][1])) < Decimal(1e-4):
             src = os.path.join(args.raw_dir,file)
-            dst = os.path.join(args.output_dir, "%i.txt" % match_id)
+            dst = os.path.join(args.output_dir, "%06i.txt" % match_id)
             copyfile(src, dst)
             print "Saving scan %i" % match_id
             match_id += 1

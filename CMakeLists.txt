@@ -3,7 +3,7 @@ cmake_minimum_required(VERSION 2.8.9)
 project(test)
 
 
-set(CMAKE_CXX_FLAGS "-std=c++11")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 set(CMAKE_BUILD_TYPE Debug)
 
 find_package(OpenCV REQUIRED)
@@ -49,3 +49,12 @@ target_link_libraries(test_main
 		-lboost_system		
 		-lgtsam
 		)
+
+add_executable(txt2ply utils/txt2ply.cpp)
+target_link_libraries(txt2ply
+		${OpenCV_LIBS} 
+		${PCL_LIBRARIES}
+		${Boost_LIBRARIES}
+		-lboost_system		
+		)
+

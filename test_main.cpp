@@ -21,10 +21,23 @@ void readImages(const std::string& img_path, std::vector<Image> &img_set)
 
 }
 
+void readLidars(const std::string& scan_path, Lidar& lidar_set)
+{
+	std::string scans = scan_path + "*.ply";
+	cv::String scans_cvstr(scans);
+	std::vector<cv::String> fn;
+	cv::glob(scans_cvstr, fn, true);
+	for(size_t k=0;k<fn.size();++k)
+	{
+		lidar_set.addScan(std::string(fn[k]));
+		std::cout << "Load scan " << k << std::endl;
+	}	
+}
+
 int main(int argc, char** argv)
 {
-	if (argc != 2) {
-    	std::cout <<" Usage: ./test_main images_folder" << std::endl;
+	if (argc != 3) {
+    	std::cout <<" Usage: ./test_main images_folder lidar_folder" << std::endl;
     	return -1;
     }
 
@@ -34,8 +47,13 @@ int main(int argc, char** argv)
 
 
 	std::string img_path = argv[1];
-	std::vector<Image> img_set;
-	std::vector<Landmark> l_set;
+	std::string lidar_path = argv[2];
+
+	Lidar lidar_set;
+	readLidars(lidar_path, lidar_set);
+	return 0;
+	std::vector<Image> img_set; // Images set
+	std::vector<Landmark> l_set; // Landmark set
 	// Read in the images
 	readImages(img_path, img_set);
 
@@ -91,7 +109,7 @@ int main(int argc, char** argv)
 		}
 	}
 
-	
+
 
 
 

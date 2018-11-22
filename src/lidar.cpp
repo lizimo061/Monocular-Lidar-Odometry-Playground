@@ -1,5 +1,5 @@
 #include "lidar.h"
-#include <pcl/io/pcd_io.h>
+#include <pcl/io/ply_io.h>
 using namespace Eigen;
 
 Lidar::Lidar(){
@@ -13,7 +13,7 @@ Lidar::Lidar(std::string fileName){
 void Lidar::addScan(std::string fileName){
 	numOfScans++;
 	pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
-	pcl::PCDReader reader;
+	pcl::PLYReader reader;
 	reader.read(fileName, *cloud);
 	if(lidarScans.size() == 0){
 		Matrix3d R = MatrixXd::Identity(3,3);
