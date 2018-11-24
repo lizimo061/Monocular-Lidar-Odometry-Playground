@@ -1,4 +1,4 @@
-#include "lidar.h"
+#include "lidarPM.h"
 #include "image.h"
 #include "Backend.h"
 #include <string>
@@ -51,7 +51,6 @@ int main(int argc, char** argv)
 
 	Lidar lidar_set;
 	readLidars(lidar_path, lidar_set);
-	return 0;
 	std::vector<Image> img_set; // Images set
 	std::vector<Landmark> l_set; // Landmark set
 	// Read in the images
@@ -71,7 +70,7 @@ int main(int argc, char** argv)
 			std::cout << "Feature extraction for image " << i << std::endl;
 		}
 		
-		// Feature matching
+		Feature matching
 		for(int i=0; i < img_set.size()-1; i++){
 			Image& img_first = img_set[i];
 			for(int j=i+1; j < img_set.size()-1; j++){
@@ -109,11 +108,18 @@ int main(int argc, char** argv)
 		}
 	}
 
+	// Add them into graph
+	Backend backend;
+	gtsam::Pose3 initPrior = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3());
+	backend.addFirstPose(0, initPrior);
 
+	for(int i=1;i < lidar_set.size(); i++){
+		backend.addNewPose(0, lidar_set.convert2GTSAM(i));
+		std::cout << "Add pose for " << i << "th pose" << std::endl;
+		backend.solve();
+	}
 
-
-
-
+	backend.writePose2File("/home/zimol/Data/test.txt");
 
 
 

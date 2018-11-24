@@ -1,9 +1,9 @@
-#include "lidar.h"
+#include "lidarPM.h"
 
 int main(int argc, char** argv)
 {
-	std::string frame_1 = "../data/frame_1.pcd";
-	std::string frame_2 = "../data/frame_2.pcd";
+	std::string frame_1(argv[1]);
+	std::string frame_2(argv[2]);
 	Lidar allScans;
 
 	allScans.addScan(frame_1);
@@ -13,3 +13,26 @@ int main(int argc, char** argv)
 	return 0;
 
 }
+
+// #include "pointmatcher/PointMatcher.h"
+// #include <string>
+
+
+// typedef PointMatcher<float> PM;
+// typedef PM::DataPoints DP;
+
+// int main(int argc, char** argv)
+// {
+// 	DP d1(DP::load(argv[1]));
+// 	DP d2(DP::load(argv[2]));
+// 	PM::ICP icp;
+// 	icp.setDefault();
+
+// 	PM::TransformationParameters T = icp(d1,d2);
+
+// 	std::cout << "trans:\n" << T << std::endl;
+
+
+// 	return 0;
+
+// }

@@ -16,10 +16,24 @@ using gtsam::symbol_shorthand::K; // Calibration
 
 Backend::Backend(BackendParams bp){
 	pose_prior_ = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(0.1)).finished());
+	mono_meas_noise_ = gtsam::noiseModel::Isotropic::Sigma(2, 2.0);
+	point_noise_ = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3::Constant(0.1));
+	odom_noise_ = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(0.1)).finished());
+
+}
+
+Backend::Backend(){
+	pose_prior_ = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(0.1)).finished());
+	mono_meas_noise_ = gtsam::noiseModel::Isotropic::Sigma(2, 2.0);
+	point_noise_ = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3::Constant(0.1));
+	odom_noise_ = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(0.1)).finished());
+	pose_num_ = 0;
 }
 
 void Backend::solve(){
-	result = gtsam::LevenbergMarquardtOptimizer(graph_, initial_estimates_).optimize();
+	gtsam::LevenbergMarquardtOptimizer optimizer(graph_, initial_estimates_); // Can add LM params later
+	current_estimates_ = optimizer.optimize();
+	initial_estimates_ = current_estimates_;
 }
 
 void Backend::initializeK(double fx, double fy, double cx, double cy, double s){
@@ -27,24 +41,22 @@ void Backend::initializeK(double fx, double fy, double cx, double cy, double s){
 }
 
 void Backend::addFirstPose(double timestamp, const gtsam::Pose3& pose){
-    pose_num_++;
+    
     if (pose_num_ != 0) { std::cout << "Not first pose!\n"; exit(-1); }
     odom_poses_.push_back(pose);
     initial_estimates_.insert(X(pose_num_), pose);
   	graph_.add(gtsam::PriorFactor<gtsam::Pose3>(X(pose_num_), pose, pose_prior_));
   	timestamps_.push_back(timestamp);
+  	pose_num_++;
 }
 
-void Backend::addNewPose(double timestamp, const gtsam::Pose3& odom_diff, int pose_id){
-	pose_num_++;
-	gtsam::Pose3 initial_pose = current_estimates_.at<gtsam::Pose3>(X(pose_num_ - 1))*odom_diff;
+void Backend::addNewPose(double timestamp, const gtsam::Pose3& odom_diff){
+	
+	//gtsam::Pose3 initial_pose = current_estimates_.at<gtsam::Pose3>(X(pose_num_ - 1))*odom_diff;
+	gtsam::Pose3 initial_pose = initial_estimates_.at<gtsam::Pose3>(X(pose_num_ - 1))*odom_diff;
 	initial_estimates_.insert(X(pose_num_), initial_pose);
 	graph_.add(gtsam::BetweenFactor<gtsam::Pose3>(X(pose_num_-1), X(pose_num_), odom_diff, odom_noise_));
-
-}
-
-gtsam::Pose3 Backend::getPoseEstimate(int idx){
-
+	pose_num_++;
 }
 
 void Backend::addLandMark(double timestamp, const gtsam::Point3& point, int landmark_id){
@@ -55,4 +67,20 @@ void Backend::addLandMark(double timestamp, const gtsam::Point3& point, int land
 
 void Backend::addPixelMeasurement(double timestamp, const gtsam::Point2& pixel, int pose_id, int landmark_id){
 	graph_.add(gtsam::GeneralSFMFactor2<gtsam::Cal3_S2>(pixel, mono_meas_noise_, X(pose_id), L(landmark_id), K(0)));
+}
+
+gtsam::Pose3 Backend::getPoseEstimate(int idx){
+	return current_estimates_.at<gtsam::Pose3>(X(idx));
+}
+
+void Backend::writePose2File(const std::string& fileName){
+	std::ofstream outFile;
+	outFile.open(fileName);
+	for(int i=0;i<pose_num_;i++){
+		gtsam::Quaternion rot = getPoseEstimate(i).rotation().toQuaternion(); // w x y z
+		gtsam::Point3 trans = getPoseEstimate(i).translation();
+		outFile << rot.w() << " " << rot.x() << " " << rot.y() << " " << rot.z() << " " << " " << trans.x() << " " << trans.y() << " " << trans.z() << "\n";
+	}
+	outFile.close();
+	std::cout << "Written poses into " << fileName << std::endl;
 }

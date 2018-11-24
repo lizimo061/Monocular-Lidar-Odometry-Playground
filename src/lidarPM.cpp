@@ -1,5 +1,4 @@
-#include "lidar.h"
-#include <pcl/io/ply_io.h>
+#include "lidarPM.h"
 using namespace Eigen;
 
 Lidar::Lidar(){
@@ -12,35 +11,41 @@ Lidar::Lidar(std::string fileName){
 
 void Lidar::addScan(std::string fileName){
 	numOfScans++;
-	pcl::PointCloud<pcl::PointXYZI>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZI>);
-	pcl::PLYReader reader;
-	reader.read(fileName, *cloud);
+	DP tmp(DP::load(fileName));
+
 	if(lidarScans.size() == 0){
 		Matrix3d R = MatrixXd::Identity(3,3);
 		Vector3d t;
 		t << 0,0,0;
-		singleScan newScan = {cloud, R, t};
+		singleScan newScan = {tmp, R, t};
 		lidarScans.push_back(newScan);
 	}
 	else{
 		singleScan last = lidarScans.back();
-		pcl::PointCloud<pcl::PointXYZI> cloud_aligned;
 		// Previous one is input
 		// Next one is target
-		pcl::IterativeClosestPoint<pcl::PointXYZI, pcl::PointXYZI> icp;
-		icp.setInputSource(last.raw_cloud);
-		icp.setInputTarget(cloud);
-		icp.align(cloud_aligned);
-		MatrixX4f T = icp.getFinalTransformation();
+		PM::ICP icp;
+		icp.setDefault();
+		PM::TransformationParameters T = icp(tmp, last.scan);
 		Matrix3d R;
 		Vector3d t;
 		R << T(0,0), T(0,1), T(0,2), T(1,0), T(1,1), T(1,2), T(2,0), T(2,1), T(2,2);
 		t << T(0,3), T(1,3), T(2,3);
 
-		singleScan newScan = {cloud, R, t};
+		singleScan newScan = {tmp, R, t};
 		lidarScans.push_back(newScan);
 	}
 
+}
+
+gtsam::Pose3 Lidar::convert2GTSAM(int i){
+	if(i >= lidarScans.size()){
+		std::cout << "ERROR: Accessing out of range!" << std::endl;
+		exit(-1);
+	}
+	else{
+		return gtsam::Pose3(gtsam::Rot3(lidarScans[i].R), gtsam::Point3(lidarScans[i].t));
+	}
 }
 
 void Lidar::ICPTransform(int source, int target){
