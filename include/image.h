@@ -12,7 +12,7 @@
 
 
 struct Landmark{
-  cv::Point3d pt;
+  cv::Point3f pt;
   int seen = 0;
 };
 
@@ -34,13 +34,20 @@ class Image {
     Image(cv::String fileName);
 
     void downsampleImg(int rate);
+
     bool kp_match_exist(size_t kp_idx, size_t img_idx){
       return kp_matches[kp_idx].count(img_idx) > 0;
     }
 
+    landmark_idx_t kp_3d(size_t kp_idx) { return kp_landmark[kp_idx]; }
+
+    kp_idx_t kp_match_idx(size_t kp_idx, size_t img_idx) { return kp_matches[kp_idx][img_idx]; };
+
     bool kp_3d_exist(size_t kp_idx) { return kp_landmark.count(kp_idx) > 0; }
 
     void addMatchId(int kp_idx, int img_idx, int dest_kp_idx);
+
+    void addLandmarkId(int kp_idx, int dest_kp_idx);
 
     void featureExtraction(const cv::Ptr<cv::FeatureDetector>& detector);
 

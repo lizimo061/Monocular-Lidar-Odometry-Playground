@@ -51,8 +51,12 @@ public:
 	void addFirstPose(double timestamp, const gtsam::Pose3& pose);
 
 	void addNewPose(double timestamp, const gtsam::Pose3& odom_diff);
+
+	void addVisualPose(const gtsam::Pose3& pose);
 	
 	void addLandMark(double timestamp, const gtsam::Point3& point, int landmark_id);
+
+	void addLandMarkInitial(const gtsam::Point3& point, int landmark_id);
 
 	void addPixelMeasurement(double timestamp, const gtsam::Point2& pixel, int pose_id, int landmark_id);
 
@@ -62,9 +66,12 @@ public:
 
 	void writePose2File(const std::string& fileName);
 
+	void writeLandmark2File(const std::string& fileName);
+
 
 private:
 	int pose_num_;
+	int landmark_num_;
 	std::vector<double> timestamps_;
 	std::vector<gtsam::Pose3> odom_poses_;
 

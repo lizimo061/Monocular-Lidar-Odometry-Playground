@@ -28,6 +28,8 @@ Backend::Backend(){
 	point_noise_ = gtsam::noiseModel::Diagonal::Sigmas(gtsam::Vector3::Constant(0.1));
 	odom_noise_ = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(0.1)).finished());
 	pose_num_ = 0;
+	landmark_num_ = 0;
+	calib_prior_ = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(5) << 100, 100, 0.01, 100, 100).finished());
 }
 
 void Backend::solve(){
@@ -37,7 +39,11 @@ void Backend::solve(){
 }
 
 void Backend::initializeK(double fx, double fy, double cx, double cy, double s){
-
+    //gtsam::Cal3_S2::shared_ptr K_tmp(new gtsam::Cal3_S2(fx,fy,s,cx,cy));
+    //K_cal = K_tmp;
+    gtsam::Cal3_S2 K_tmp(fx,fy,s,cx,cy);
+	initial_estimates_.insert(K(0), gtsam::Cal3_S2(fx,fy,s,cx,cy));
+	graph_.add(gtsam::PriorFactor<gtsam::Cal3_S2>(K(0), K_tmp, calib_prior_));
 }
 
 void Backend::addFirstPose(double timestamp, const gtsam::Pose3& pose){
@@ -50,6 +56,11 @@ void Backend::addFirstPose(double timestamp, const gtsam::Pose3& pose){
   	pose_num_++;
 }
 
+void Backend::addVisualPose(const gtsam::Pose3& pose){
+	initial_estimates_.insert(X(pose_num_), pose);
+	pose_num_++;
+}
+
 void Backend::addNewPose(double timestamp, const gtsam::Pose3& odom_diff){
 	
 	//gtsam::Pose3 initial_pose = current_estimates_.at<gtsam::Pose3>(X(pose_num_ - 1))*odom_diff;
@@ -60,9 +71,13 @@ void Backend::addNewPose(double timestamp, const gtsam::Pose3& odom_diff){
 }
 
 void Backend::addLandMark(double timestamp, const gtsam::Point3& point, int landmark_id){
-	initial_estimates_.insert<gtsam::Point3>(L(landmark_id), point);
 	graph_.add(gtsam::PriorFactor<gtsam::Point3>(L(landmark_id), point, point_noise_));
 	timestamps_.push_back(timestamp);
+}
+
+void Backend::addLandMarkInitial(const gtsam::Point3& point, int landmark_id){
+	initial_estimates_.insert<gtsam::Point3>(L(landmark_id), point);
+	landmark_num_++;
 }
 
 void Backend::addPixelMeasurement(double timestamp, const gtsam::Point2& pixel, int pose_id, int landmark_id){
@@ -83,4 +98,16 @@ void Backend::writePose2File(const std::string& fileName){
 	}
 	outFile.close();
 	std::cout << "Written poses into " << fileName << std::endl;
+}
+
+void Backend::writeLandmark2File(const std::string& fileName){
+	std::ofstream outFile;
+	outFile.open(fileName);
+	current_estimates_.print();	
+	for(int i=0;i<landmark_num_;i++){
+		gtsam::Point3 pt = current_estimates_.at<gtsam::Point3>(L(i));
+		outFile << pt.x() << " " << pt.y() << " " << pt.z() << std::endl;
+	}
+	outFile.close();
+	std::cout << "Written optimized sparse features into " << fileName << std::endl;
 }
