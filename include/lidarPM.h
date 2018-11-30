@@ -19,7 +19,9 @@ using namespace Eigen;
 struct singleScan{
   DP scan;
   Matrix3d R; // Transformation from last to current
+  Matrix3d R_ref; // Transformation relative to reference frame
   Vector3d t;
+  Vector3d t_ref;
 };
 
 class Lidar{
@@ -33,6 +35,8 @@ class Lidar{
     void addScan(std::string fileName);
     
     gtsam::Pose3 convert2GTSAM(int i);
+
+    gtsam::Pose3 refConvert2GTSAM(int i);
     
     size_t size(){return lidarScans.size();};
   

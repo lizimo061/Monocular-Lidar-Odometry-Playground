@@ -2,13 +2,14 @@
 #include "image.h"
 #include "Backend.h"
 #include <string>
+#include <stdlib.h>
 
 
 
 
 void readImages(const std::string& img_path, std::vector<Image> &img_set)
 {
-	std::string imgs = img_path + "*.jpg";
+	std::string imgs = img_path + "*.png";
 	cv::String cv_imgs(imgs);
 	std::vector<cv::String> fn;
 	cv::glob(cv_imgs, fn, true);
@@ -16,7 +17,7 @@ void readImages(const std::string& img_path, std::vector<Image> &img_set)
 	{
 		Image image_tmp(fn[k]);
 		img_set.push_back(image_tmp);
-		std::cout << "Load image " << k << std::endl;
+		std::cout << "Load image " << fn[k] << std::endl;
 	}
 
 }
@@ -30,7 +31,7 @@ void readLidars(const std::string& scan_path, Lidar& lidar_set)
 	for(size_t k=0;k<fn.size();++k)
 	{
 		lidar_set.addScan(std::string(fn[k]));
-		std::cout << "Load scan " << k << std::endl;
+		std::cout << "Load scan " << fn[k] << std::endl;
 	}	
 }
 
@@ -72,22 +73,30 @@ int main(int argc, char** argv)
     // Parameters
     int downsample = 1; // 1 is not downsampling
     float inlier_ratio = 0.7;
-    int min_landmark_seen = 3;
+    int min_landmark_seen = 5;
 
-	double fx = 719;
+	// double fx = 719;
+	// double fy = fx;
+	// double cx = 0;
+	// double cy = 0;
+
+	double fx = 1359.38;
 	double fy = fx;
-	double cx = 0;
-	double cy = 0;
+	double cx = 1395.56;
+	double cy = 1105.93;
 
 	std::string img_path = argv[1];
 	std::string lidar_path = argv[2];
 
 	Lidar lidar_set;
-	//readLidars(lidar_path, lidar_set);
+	readLidars(lidar_path, lidar_set);
 	std::vector<Image> img_set; // Images set
 	std::vector<Landmark> l_set; // Landmark set
 	// Read in the images
 	readImages(img_path, img_set);
+
+	
+
 		
 	{
 		using namespace cv;
@@ -125,27 +134,37 @@ int main(int argc, char** argv)
 					}
 				}
 				// Use fundamental matrix to rule out outliers
+				if(src.size() < 100|| dst.size() < 100){
+					std::cout << "Not enough matches for " << i << " " << j << std::endl;
+					continue; 
+				}
+
 				findFundamentalMat(src, dst, FM_RANSAC, 3, 0.99, mask);
-			
+				
+				Mat display = img_first.img.clone();
+				display.push_back(img_second.img.clone());
+
 				for(int k = 0; k < mask.size(); k++){
 					if(mask[k]){
 						img_first.addMatchId(first_kp[k], j, second_kp[k]);
 						img_second.addMatchId(second_kp[k], i, first_kp[k]);
+
+                        //line(display, src[k], dst[k] + Point2f(0, img_first.img.rows), Scalar(0, 0, 255), 2);
 					}
 				}
 
 				std::cout << "Feature matching: " << i << " " << j << " has " << sum(mask)[0] << " good matches." << std::endl;
 
+				resize(display, display, display.size()/2);
+
+                //imshow("img", display);
+                waitKey(1);
 			}
 		}
 
 		// Triangulate and recover the 3D points
 
 		Mat K_intr = Mat::eye(3,3,CV_64F);
-		// double fx = 1359.38;
-		// double fy = fx;
-		// double cx = 1395.56;
-		// double cy = 1105.93;
 
 		K_intr.at<double>(0,0) = fx; // fx
 		K_intr.at<double>(1,1) = fy; // fy
@@ -185,6 +204,12 @@ int main(int argc, char** argv)
 			Mat E = findEssentialMat(dst, src, fx, pp, RANSAC, 0.999, 1.0, mask);
 			Mat local_R, local_t;
 			recoverPose(E, dst, src, local_R, local_t, fx, pp, mask);
+
+ 			if(abs(determinant(local_R) - 1) > 1e-7){
+				std::cout << "Wrong rotation matrix" << std::endl;
+				exit(-1);
+			}
+
 			Mat T = Mat::eye(4, 4, CV_64F);
         	local_R.copyTo(T(Range(0, 3), Range(0, 3)));
 			local_t.copyTo(T(Range(0, 3), Range(3, 4)));
@@ -204,6 +229,75 @@ int main(int argc, char** argv)
 
 			Mat points4D;
 			triangulatePoints(prev.P, curr.P, src, dst, points4D);
+
+			if (i > 0) {
+                double scale = 0;
+                int count = 0;
+
+                Point3f prev_camera;
+
+                prev_camera.x = prev.T.at<double>(0, 3);
+                prev_camera.y = prev.T.at<double>(1, 3);
+                prev_camera.z = prev.T.at<double>(2, 3);
+
+                std::vector<Point3f> new_pts;
+                std::vector<Point3f> existing_pts;
+
+                for (size_t j=0; j < kp_used.size(); j++) {
+                    size_t k = kp_used[j];
+                    if (mask.at<uchar>(j) && prev.kp_match_exist(k, i+1) && prev.kp_3d_exist(k)) {
+                        Point3f pt3d;
+
+                        pt3d.x = points4D.at<float>(0, j) / points4D.at<float>(3, j);
+                        pt3d.y = points4D.at<float>(1, j) / points4D.at<float>(3, j);
+                        pt3d.z = points4D.at<float>(2, j) / points4D.at<float>(3, j);
+
+                        size_t idx = prev.kp_3d(k);
+                        Point3f avg_landmark = l_set[idx].pt / (l_set[idx].seen - 1);
+
+                        new_pts.push_back(pt3d);
+                        existing_pts.push_back(avg_landmark);
+                    }
+                }
+
+                // ratio of distance for all possible point pairing
+                for (size_t j=0; j < new_pts.size()-1; j++) {
+                    for (size_t k=j+1; k< new_pts.size(); k++) {
+                        double s = norm(existing_pts[j] - existing_pts[k]) / norm(new_pts[j] - new_pts[k]);
+
+                        scale += s;
+                        count++;
+                    }
+                }
+
+                assert(count > 0);
+
+                scale /= count;
+
+                // apply scale and re-calculate T and P matrix
+                local_t *= scale;
+
+                // local tansform
+                Mat T = Mat::eye(4, 4, CV_64F);
+                local_R.copyTo(T(Range(0, 3), Range(0, 3)));
+                local_t.copyTo(T(Range(0, 3), Range(3, 4)));
+
+                // accumulate transform
+                curr.T = prev.T*T;
+
+                // make projection ,matrix
+                R = curr.T(Range(0, 3), Range(0, 3));
+                t = curr.T(Range(0, 3), Range(3, 4));
+
+                Mat P(3, 4, CV_64F);
+                P(Range(0, 3), Range(0, 3)) = R.t();
+                P(Range(0, 3), Range(3, 4)) = -R.t()*t;
+                P = K_intr*P;
+
+                curr.P = P;
+
+                triangulatePoints(prev.P, curr.P, src, dst, points4D);
+            }
 
 			for(int j=0; j<kp_used.size(); j++){
 				if(mask.at<uchar>(j)){
@@ -239,6 +333,13 @@ int main(int argc, char** argv)
                 l.pt /= (l.seen - 1);
 			}
 		}
+
+		// for(int j=0;j<l_set.size();j++){
+		// 	Landmark& l = l_set[j];
+		// 	if(l.seen >= min_landmark_seen){
+		// 		std::cout << "Feature " << j << " : " << l.pt << std::endl;
+		// 	}
+		// }
 	}
 	
 	std::cout << "In total " << l_set.size() << " points are observed\n" << std::endl;
@@ -246,40 +347,36 @@ int main(int argc, char** argv)
 	writeLandmark2File("/home/zimol/Data/sparse.txt", l_set);
 	writeCamPose2File("/home/zimol/Data/poses.txt", img_set);
 
+
+	// ------------------------------ Backend optimization -------------------------------------------
+
 	// Add them into graph
 	Backend backend;
-	backend.initializeK(fx,fy,0,cx,cy);
+	gtsam::Cal3_S2 K(fx, fy, 0 /* skew */, cx, cy);
+	backend.intrinsicsInit(K);
 
-	gtsam::Pose3 initPrior = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3());
-	
+	gtsam::Pose3 pose_prior = gtsam::Pose3(gtsam::Rot3(), gtsam::Point3());
+	bool init_prior = false;
 
 	for(int i=0;i < img_set.size(); i++){
-		// if(i==0){
-		// 	backend.addFirstPose(0, initPrior);
 
-		// }
-		// else{
-		// 	backend.addNewPose(0, lidar_set.convert2GTSAM(i));
-		// }
 		
-		//std::cout << "Add pose for " << i << "th pose" << std::endl;
-
-
 		// Test bundle adjustment
 		Image curr_img = img_set[i];
 
+		//Use poses from motion stereo
 		gtsam::Rot3 R(
-                curr_img.T.at<double>(0,0),
-                curr_img.T.at<double>(0,1),
-                curr_img.T.at<double>(0,2),
+        curr_img.T.at<double>(0,0),
+        curr_img.T.at<double>(0,1),
+        curr_img.T.at<double>(0,2),
 
-                curr_img.T.at<double>(1,0),
-                curr_img.T.at<double>(1,1),
-                curr_img.T.at<double>(1,2),
+        curr_img.T.at<double>(1,0),
+        curr_img.T.at<double>(1,1),
+        curr_img.T.at<double>(1,2),
 
-                curr_img.T.at<double>(2,0),
-                curr_img.T.at<double>(2,1),
-                curr_img.T.at<double>(2,2)
+        curr_img.T.at<double>(2,0),
+        curr_img.T.at<double>(2,1),
+        curr_img.T.at<double>(2,2)
 		);
 
 		gtsam::Point3 t;
@@ -289,15 +386,21 @@ int main(int argc, char** argv)
 
 		gtsam::Pose3 pose(R,t);
 
-		std::cout << pose << std::endl;
+		std::cout <<  "Cam:\n" << pose << std::endl;
 
 		if(i==0){
-			backend.addFirstPose(0, pose);
+			backend.addFirstPose(0, pose_prior);
 		}
 		else{
-			backend.addVisualPose(pose);
+			backend.addNewPose(0, lidar_set.convert2GTSAM(i), pose);
+			//backend.addVisualPose(lidar_set.refConvert2GTSAM(i));
 		}
-
+		// if(i==0){
+		// 	backend.addFirstPose(0, pose);
+		// }
+		// else{
+		// 	backend.addVisualPose(pose);
+		// }
 
 		for(int j=0;j < curr_img.kp.size(); j++){
 			if(curr_img.kp_3d_exist(j)){
@@ -313,11 +416,11 @@ int main(int argc, char** argv)
 				}
 			}
 		}
-
-		//backend.solve();
+	}
+	for(int i=0;i<lidar_set.size();i++){
+		std::cout << "lid " << i << ":\n" << lidar_set.lidarScans[i].R_ref << "\n" << lidar_set.lidarScans[i].t_ref << std::endl;
 	}
 
-	bool init_prior = false;
 	for(int i=0;i < l_set.size(); i++){
 		if(l_set[i].seen >= min_landmark_seen){
 			cv::Point3f p = l_set[i].pt;
@@ -330,7 +433,98 @@ int main(int argc, char** argv)
 			}
 		}
 	}
+
+
+	double init_err = backend.printError();
+	std::cout << "initial graph error = " << init_err<< std::endl;
 	backend.solve();
+	
+	double opt_err = backend.printError();
+
+	
+	
+    std::cout << "final graph error = " << opt_err << std::endl;
+	
 	backend.writePose2File("/home/zimol/Data/test.txt");
 	backend.writeLandmark2File("/home/zimol/Data/opt_sparse.txt");
+
+	// gtsam::Values result;
+	// {
+	// 	//Debug
+	// 	using namespace gtsam;
+	// 	Cal3_S2 K(fx, fy, 0 /* skew */, cx, cy);
+ //        noiseModel::Isotropic::shared_ptr measurement_noise = noiseModel::Isotropic::Sigma(2, 2.0); // pixel error in (x,y)
+
+	// 	NonlinearFactorGraph graph;
+ //        Values initial;
+
+	// 	for (size_t i=0; i < img_set.size(); i++){
+	// 		Image curr_img = img_set[i];
+	// 		Rot3 R(
+ //        	curr_img.T.at<double>(0,0),
+ //        	curr_img.T.at<double>(0,1),
+ //        	curr_img.T.at<double>(0,2),
+
+ //        	curr_img.T.at<double>(1,0),
+ //        	curr_img.T.at<double>(1,1),
+ //        	curr_img.T.at<double>(1,2),
+
+ //        	curr_img.T.at<double>(2,0),
+ //       	 	curr_img.T.at<double>(2,1),
+ //        	curr_img.T.at<double>(2,2)
+	// 		);
+
+	// 		Point3 t;
+	// 		t(0) = curr_img.T.at<double>(0,3);
+ //        	t(1) = curr_img.T.at<double>(1,3);
+	// 		t(2) = curr_img.T.at<double>(2,3);
+
+	// 		Pose3 pose(R,t);
+	// 		if (i == 0) {
+ //                noiseModel::Diagonal::shared_ptr pose_noise = noiseModel::Diagonal::Sigmas((Vector(6) << Vector3::Constant(0.1), Vector3::Constant(0.1)).finished());
+ //                graph.emplace_shared<PriorFactor<Pose3> >(Symbol('x', 0), pose, pose_noise); // add directly to graph
+ //            }
+
+ //            initial.insert(Symbol('x', i), pose);
+
+ //            // landmark seen
+ //            for (size_t k=0; k < curr_img.kp.size(); k++) {
+ //                if (curr_img.kp_3d_exist(k)) {
+ //                    size_t landmark_id = curr_img.kp_3d(k);
+
+ //                    if (l_set[landmark_id].seen >= min_landmark_seen) {
+ //                        Point2 pt;
+
+ //                        pt(0) = curr_img.kp[k].pt.x;
+ //                        pt(1) = curr_img.kp[k].pt.y;
+
+ //                        graph.add(GeneralSFMFactor2<Cal3_S2>(pt, measurement_noise, Symbol('x', i), Symbol('l', landmark_id), Symbol('K', 0)));
+ //                    }
+ //                }
+ //          }
+	// 	}
+
+	// 	initial.insert(Symbol('K', 0), K);
+	// 	noiseModel::Diagonal::shared_ptr cal_noise = noiseModel::Diagonal::Sigmas((Vector(5) << 100, 100, 0.01 /*skew*/, 100, 100).finished());
+ //        graph.add(PriorFactor<Cal3_S2>(Symbol('K', 0), K, cal_noise));
+
+ //        bool init_prior = false;
+
+ //        for (size_t i=0; i < l_set.size(); i++) {
+ //            if (l_set[i].seen >= min_landmark_seen) {
+ //                cv::Point3f &p = l_set[i].pt;
+
+ //                initial.insert<Point3>(Symbol('l', i), Point3(p.x, p.y, p.z));
+ //                if (!init_prior) {
+ //                    init_prior = true;
+
+ //                    noiseModel::Isotropic::shared_ptr point_noise = noiseModel::Isotropic::Sigma(3, 0.1);
+ //                    Point3 p(l_set[i].pt.x, l_set[i].pt.y, l_set[i].pt.z);
+ //                    graph.add(PriorFactor<Point3>(Symbol('l', i), p, point_noise));
+ //                }
+ //            }
+ //        }
+
+ //        result = LevenbergMarquardtOptimizer(graph, initial).optimize();
+	// }
 }

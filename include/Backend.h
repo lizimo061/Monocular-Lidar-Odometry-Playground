@@ -52,6 +52,8 @@ public:
 
 	void addNewPose(double timestamp, const gtsam::Pose3& odom_diff);
 
+	void addNewPose(double timestamp, const gtsam::Pose3& odom_diff, const gtsam::Pose3& init_pose);
+
 	void addVisualPose(const gtsam::Pose3& pose);
 	
 	void addLandMark(double timestamp, const gtsam::Point3& point, int landmark_id);
@@ -60,18 +62,25 @@ public:
 
 	void addPixelMeasurement(double timestamp, const gtsam::Point2& pixel, int pose_id, int landmark_id);
 
-	void initializeK(double fx, double fy, double cx, double cy, double s);
+	void intrinsicsInit(gtsam::Cal3_S2 K);
 
 	gtsam::Pose3 getPoseEstimate(int idx);
+
+	bool existLandmark(int idx);
 
 	void writePose2File(const std::string& fileName);
 
 	void writeLandmark2File(const std::string& fileName);
 
+	double printError();
+
+	
+
 
 private:
 	int pose_num_;
 	int landmark_num_;
+	std::vector<int> landmark_ids_;
 	std::vector<double> timestamps_;
 	std::vector<gtsam::Pose3> odom_poses_;
 
@@ -81,7 +90,9 @@ private:
 	gtsam::GaussNewtonParams GN_params_;
 	gtsam::LevenbergMarquardtParams LM_params_;
 	gtsam::NonlinearFactorGraph graph_;
+
 	gtsam::Values initial_estimates_, current_estimates_;
+	
 	gtsam::noiseModel::Diagonal::shared_ptr pose_prior_, mono_meas_noise_, point_noise_, calib_prior_, odom_noise_;
 
 	gtsam::Cal3_S2::shared_ptr K_cal;
