@@ -21,6 +21,12 @@
 #include <gtsam/nonlinear/GaussNewtonOptimizer.h>
 #include <gtsam/nonlinear/LevenbergMarquardtOptimizer.h>
 #include <gtsam/nonlinear/ISAM2.h>
+#include <gtsam/slam/SmartProjectionPoseFactor.h>
+#include "image.h"
+
+
+typedef gtsam::SmartProjectionPoseFactor<gtsam::Cal3_S2> SmartFactor;
+typedef gtsam::PinholePose<gtsam::Cal3_S2> Camera;
 
 
 enum class Solver
@@ -62,6 +68,8 @@ public:
 
 	void addPixelMeasurement(double timestamp, const gtsam::Point2& pixel, int pose_id, int landmark_id);
 
+	void addSmartFactors(std::vector<Image>& img_set, size_t landmark_size);
+
 	void intrinsicsInit(gtsam::Cal3_S2 K);
 
 	gtsam::Pose3 getPoseEstimate(int idx);
@@ -75,7 +83,9 @@ public:
 	double printError();
 
 	
+	gtsam::NonlinearFactorGraph graph_;
 
+	gtsam::noiseModel::Diagonal::shared_ptr pose_prior_, mono_meas_noise_, point_noise_, calib_prior_, odom_noise_;
 
 private:
 	int pose_num_;
@@ -83,17 +93,16 @@ private:
 	std::vector<int> landmark_ids_;
 	std::vector<double> timestamps_;
 	std::vector<gtsam::Pose3> odom_poses_;
+	std::vector<SmartFactor::shared_ptr> smartfactors_ptr;
 
 	BackendParams bp_;
 
 	gtsam::ISAM2 isam2_;
 	gtsam::GaussNewtonParams GN_params_;
 	gtsam::LevenbergMarquardtParams LM_params_;
-	gtsam::NonlinearFactorGraph graph_;
-
+	
 	gtsam::Values initial_estimates_, current_estimates_;
 	
-	gtsam::noiseModel::Diagonal::shared_ptr pose_prior_, mono_meas_noise_, point_noise_, calib_prior_, odom_noise_;
 
 	gtsam::Cal3_S2::shared_ptr K_cal;
 };

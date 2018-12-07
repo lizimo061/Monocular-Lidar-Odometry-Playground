@@ -1,4 +1,4 @@
-input_dir = '/home/zimol/Data/output/';
+input_dir = '/home/zimol/Data/hamerschleg/output/';
 
 curr_dir = pwd;
 

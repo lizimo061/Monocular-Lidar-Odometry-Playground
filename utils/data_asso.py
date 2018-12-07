@@ -66,17 +66,17 @@ def main():
     print "%i matches found" % len(match_pair)
     print "Total lidar count %i" % len(lidar_ts)
     # Read image
-    # match_id = 0
-    # for file in files:
-    #     bag = rosbag.Bag(os.path.join(args.input_folder,file), "r")
-    #     for topic, msg, t in bag.read_messages(topics = [args.lidar_topic, args.img_topic]):
-    #         curr_t = msg.header.stamp.to_nsec()/1e9
-    #         if topic == args.img_topic and curr_t == match_pair[match_id][0]:
-    #             cv_img = cvbridge_obj.imgmsg_to_cv2(msg, desired_encoding="bgr8")
-    #             cv2.imwrite(os.path.join(args.output_dir, "%06i.png" % match_id), cv_img)
-    #             print "Saving image %i" % match_id
-    #             match_id += 1
-    #     bag.close()
+    match_id = 0
+    for file in files:
+        bag = rosbag.Bag(os.path.join(args.input_folder,file), "r")
+        for topic, msg, t in bag.read_messages(topics = [args.lidar_topic, args.img_topic]):
+            curr_t = msg.header.stamp.to_nsec()/1e9
+            if topic == args.img_topic and curr_t == match_pair[match_id][0]:
+                cv_img = cvbridge_obj.imgmsg_to_cv2(msg, desired_encoding="bgr8")
+                cv2.imwrite(os.path.join(args.output_dir, "%06i.png" % match_id), cv_img)
+                print "Saving image %i" % match_id
+                match_id += 1
+        bag.close()
     
     # Read LiDAR 
     match_id = 0

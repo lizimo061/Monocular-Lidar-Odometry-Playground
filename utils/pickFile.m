@@ -1,12 +1,12 @@
 curr_dir = pwd;
-scans_dir = '/home/zimol/Data/scans/';
-images_dir = '/home/zimol/Data/images/';
+scans_dir = '/home/zimol/Data/hamerschleg/scans/';
+images_dir = '/home/zimol/Data/hamerschleg/images/';
 
-target_images = '/home/zimol/Data/new_images/';
-target_scans = '/home/zimol/Data/new_scans/';
+target_images = '/home/zimol/Data/hamerschleg/s_images/';
+target_scans = '/home/zimol/Data/hamerschleg/s_scans/';
 
-starting_id = 16;
-ending_id = 722;
+starting_id = 0;
+ending_id = 811;
 interval = 6;
 
 for i = starting_id:interval:ending_id

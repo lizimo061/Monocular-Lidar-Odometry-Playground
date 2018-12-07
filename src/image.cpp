@@ -35,6 +35,15 @@ void Image::addLandmarkId(int kp_idx, int dest_kp_idx){
 	kp_landmark[kp_idx] = dest_kp_idx;
 }
 
+int Image::findKpIdx(size_t idx){
+	for(auto &i : kp_landmark){
+		if(i.second == idx){
+			return i.first;
+		}
+	}
+	//std::cout << "Not found value!" << std::endl;
+	return -1;
+}
 
 // int main(int argc, char** argv) {
 //     if (argc != 3) {

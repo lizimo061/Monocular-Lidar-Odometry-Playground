@@ -8,11 +8,14 @@
 
 #include "Backend.h"
 
+
+
 using gtsam::symbol_shorthand::X; // Pose3, x y z r p y
 using gtsam::symbol_shorthand::V; // Velocity, x_dot y_dot z_dot
 using gtsam::symbol_shorthand::B; // Bias, ax ay az gx gy gz
 using gtsam::symbol_shorthand::L; // Landmarks
 //using gtsam::symbol_shorthand::K; // Calibration
+
 
 Backend::Backend(BackendParams bp){
 	pose_prior_ = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(0.1)).finished());
@@ -23,9 +26,9 @@ Backend::Backend(BackendParams bp){
 }
 
 Backend::Backend(){
-	pose_prior_ = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << gtsam::Vector3::Constant(0.5), gtsam::Vector3::Constant(0.5)).finished());
-	mono_meas_noise_ = gtsam::noiseModel::Isotropic::Sigma(2, 1.0);
-	point_noise_ = gtsam::noiseModel::Isotropic::Sigma(3,0.1);
+	pose_prior_ = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(0.1)).finished());
+	mono_meas_noise_ = gtsam::noiseModel::Isotropic::Sigma(2, 2.0);
+	point_noise_ = gtsam::noiseModel::Isotropic::Sigma(3,0.8);
 	odom_noise_ = gtsam::noiseModel::Diagonal::Sigmas((gtsam::Vector(6) << gtsam::Vector3::Constant(0.1), gtsam::Vector3::Constant(0.1)).finished());
 	pose_num_ = 0;
 	landmark_num_ = 0;
@@ -89,6 +92,29 @@ void Backend::addLandMarkInitial(const gtsam::Point3& point, int landmark_id){
 
 void Backend::addPixelMeasurement(double timestamp, const gtsam::Point2& pixel, int pose_id, int landmark_id){
 	graph_.add(gtsam::GeneralSFMFactor2<gtsam::Cal3_S2>(pixel, mono_meas_noise_, X(pose_id), L(landmark_id), gtsam::Symbol('K',0)));
+}
+
+void Backend::addSmartFactors(std::vector<Image>& img_set, size_t landmark_size){
+	
+	gtsam::Cal3_S2::shared_ptr K_tmp(new gtsam::Cal3_S2(1359.38, 1359.38, 0.0, 1395.56, 1105.93));
+	for(int i=0;i<landmark_size;i++){
+		SmartFactor::shared_ptr smartfactor(new SmartFactor(mono_meas_noise_, K_tmp));
+
+		for(int j=0;j<img_set.size();j++){
+			Image curr_img = img_set[j];
+		 	size_t idx = curr_img.findKpIdx(i);
+		 	if(idx == -1)
+		 		continue;
+		 	gtsam::Point2 pt;
+		 	pt(0) = curr_img.kp[idx].pt.x;
+		 	pt(1) = curr_img.kp[idx].pt.y;
+
+		 	smartfactor->add(pt, X(j));
+		 	std::cout << "Add measurement " << i << " in img " << j << std::endl; 
+		}
+		smartfactors_ptr.push_back(smartfactor);
+		graph_.push_back(smartfactor);
+	}
 }
 
 gtsam::Pose3 Backend::getPoseEstimate(int idx){

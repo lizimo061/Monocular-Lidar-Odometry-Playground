@@ -8,7 +8,8 @@
 #include <Eigen/Dense>
 #include <gtsam/geometry/Pose3.h>
 #include "pointmatcher/PointMatcher.h"
-
+#include <opencv2/highgui.hpp>
+#include <opencv2/opencv.hpp>
 
 typedef PointMatcher<float> PM;
 typedef PM::DataPoints DP;
@@ -39,11 +40,17 @@ class Lidar{
     gtsam::Pose3 refConvert2GTSAM(int i);
     
     size_t size(){return lidarScans.size();};
+
+    cv::Mat eigen2cv(const MatrixXd& mat, int h, int w);
+
+    void writeLiDARPose(const std::string& fileName);
   
   private:
     int numOfScans;
 
     void ICPTransform(int source, int target);
+
+    Matrix4d T_l_c; // calibration
 };
 
 #endif

@@ -51,6 +51,8 @@ class Image {
 
     void featureExtraction(const cv::Ptr<cv::FeatureDetector>& detector);
 
+    int findKpIdx(size_t idx);
+
     void release();
 
   private:

@@ -74,6 +74,7 @@ int main(int argc, char** argv)
     int downsample = 1; // 1 is not downsampling
     float inlier_ratio = 0.7;
     int min_landmark_seen = 5;
+    bool visualize = false;
 
 	// double fx = 719;
 	// double fy = fx;
@@ -90,6 +91,7 @@ int main(int argc, char** argv)
 
 	Lidar lidar_set;
 	readLidars(lidar_path, lidar_set);
+	lidar_set.writeLiDARPose("/home/zimol/Data/lidar_pose.txt");
 	std::vector<Image> img_set; // Images set
 	std::vector<Landmark> l_set; // Landmark set
 	// Read in the images
@@ -106,7 +108,7 @@ int main(int argc, char** argv)
 		Ptr<DescriptorMatcher> matcher = DescriptorMatcher::create("BruteForce-Hamming");
 		for(int i=0;i<img_set.size();i++){
 			Image& current = img_set[i];
-			current.downsampleImg(downsample);
+			//current.downsampleImg(downsample);
 			current.featureExtraction(feature);
 			std::cout << "Feature extraction for image " << i << std::endl;
 		}
@@ -133,8 +135,8 @@ int main(int argc, char** argv)
 						second_kp.push_back(m_temp[0].trainIdx);
 					}
 				}
-				// Use fundamental matrix to rule out outliers
-				if(src.size() < 100|| dst.size() < 100){
+				//Use fundamental matrix to rule out outliers
+				if(src.size() < 10 || dst.size() < 10){
 					std::cout << "Not enough matches for " << i << " " << j << std::endl;
 					continue; 
 				}
@@ -149,16 +151,18 @@ int main(int argc, char** argv)
 						img_first.addMatchId(first_kp[k], j, second_kp[k]);
 						img_second.addMatchId(second_kp[k], i, first_kp[k]);
 
-                        //line(display, src[k], dst[k] + Point2f(0, img_first.img.rows), Scalar(0, 0, 255), 2);
+						if(visualize)
+                        	line(display, src[k], dst[k] + Point2f(0, img_first.img.rows), Scalar(0, 0, 255), 2);
 					}
 				}
 
 				std::cout << "Feature matching: " << i << " " << j << " has " << sum(mask)[0] << " good matches." << std::endl;
 
-				resize(display, display, display.size()/2);
-
-                //imshow("img", display);
-                waitKey(1);
+				if(visualize){
+					resize(display, display, display.size()/2);
+                	imshow("img", display);
+                	waitKey(1);
+                }
 			}
 		}
 
@@ -198,6 +202,11 @@ int main(int argc, char** argv)
 			// Debug
 			// std::cout << "dst size: " << dst.size() << std::endl;
 			// std::cout << "src size: " << src.size() << std::endl;
+			std::cout << "kp size: " << kp_used.size() << std::endl;
+
+			// if(kp_used.size() == 0){
+
+			// }
 
 			// Recover the poses from dst to src
 			Mat mask;
@@ -217,7 +226,7 @@ int main(int argc, char** argv)
 			curr.T = prev.T*T;
 
 			Mat R = curr.T(Range(0, 3), Range(0, 3));
-        	Mat t = curr.T(Range(0, 3), Range(3, 4));
+			Mat t = curr.T(Range(0, 3), Range(3, 4));
 
         	Mat P(3, 4, CV_64F);
 
@@ -229,6 +238,24 @@ int main(int argc, char** argv)
 
 			Mat points4D;
 			triangulatePoints(prev.P, curr.P, src, dst, points4D);
+
+			// Test with LiDAR pose
+			// Mat P(3, 4, CV_64F);
+			// Mat points4D;
+			// local_R = lidar_set.eigen2cv(lidar_set.lidarScans[i].R,3,3);
+			// local_t = lidar_set.eigen2cv(lidar_set.lidarScans[i].t,3,1);
+			// Mat T = Mat::eye(4, 4, CV_64F);
+			// local_R.copyTo(T(Range(0, 3), Range(0, 3)));
+			// local_t.copyTo(T(Range(0, 3), Range(3, 4)));
+			// curr.T = prev.T*T;
+			// Mat R = curr.T(Range(0, 3), Range(0, 3));
+			// Mat t = curr.T(Range(0, 3), Range(3, 4));
+   // 			P(Range(0, 3), Range(0, 3)) = R.t();
+   // 			P(Range(0, 3), Range(3, 4)) = -R.t()*t;
+   // 			P = K_intr*P;
+
+   // 			curr.P = P;
+			// triangulatePoints(prev.P, curr.P, src, dst, points4D);
 
 			if (i > 0) {
                 double scale = 0;
@@ -261,19 +288,26 @@ int main(int argc, char** argv)
                 }
 
                 // ratio of distance for all possible point pairing
-                for (size_t j=0; j < new_pts.size()-1; j++) {
-                    for (size_t k=j+1; k< new_pts.size(); k++) {
-                        double s = norm(existing_pts[j] - existing_pts[k]) / norm(new_pts[j] - new_pts[k]);
+                int m = 100;
+                int iter_num = std::min(m, (int)new_pts.size());
+                if(iter_num!=0){
+                	std::cout << iter_num << std::endl;
+                	for (size_t j=0; j < iter_num-1; j++) {
+                    	for (size_t k=j+1; k< iter_num; k++) {
+                        	double s = norm(existing_pts[j] - existing_pts[k]) / norm(new_pts[j] - new_pts[k]);
 
-                        scale += s;
-                        count++;
-                    }
-                }
+                        	scale += s;
+                        	count++;
+                    	}
+                	}
 
-                assert(count > 0);
+                	assert(count > 0);
 
-                scale /= count;
-
+                	scale /= count;
+            	}
+            	else{
+            		scale = 1;
+            	}
                 // apply scale and re-calculate T and P matrix
                 local_t *= scale;
 
@@ -297,7 +331,7 @@ int main(int argc, char** argv)
                 curr.P = P;
 
                 triangulatePoints(prev.P, curr.P, src, dst, points4D);
-            }
+   			}
 
 			for(int j=0; j<kp_used.size(); j++){
 				if(mask.at<uchar>(j)){
@@ -313,6 +347,7 @@ int main(int argc, char** argv)
 						curr.addLandmarkId(match_idx, prev.kp_3d(k));
 						l_set[prev.kp_3d(k)].pt += pt3d;
 						l_set[curr.kp_3d(match_idx)].seen++;
+
 					}
 					else{
 						Landmark lm;
@@ -325,6 +360,7 @@ int main(int argc, char** argv)
 					}
 				}
 			}
+			std::cout << "Triangulate image " <<  i << std::endl;
 		}
 
 		for(int j=0;j<l_set.size();j++){
@@ -414,9 +450,29 @@ int main(int argc, char** argv)
 
 					backend.addPixelMeasurement(0, pt, i, lm_id);
 				}
+
+		// 		// if(l_set[lm_id].seen >= min_landmark_seen && backend.existLandmark(lm_id)){
+		// 		// 	cv::Point3f p = l_set[lm_id].pt;
+
+		// 		// 	backend.addLandMarkInitial(gtsam::Point3(p.x,p.y,p.z), lm_id);
+
+		// 		// 	if(!init_prior){
+		// 		// 		init_prior = true;
+		// 		// 		backend.addLandMark(0, gtsam::Point3(p.x,p.y,p.z), lm_id);
+		// 		// 	}
+
+		// 		// }
+	
+
 			}
 		}
+		//backend.solve();
+		//std::cout << "solve in pose " << i << ". the error is " << backend.printError() << std::endl;
 	}
+
+	// Using smart factor
+
+
 	for(int i=0;i<lidar_set.size();i++){
 		std::cout << "lid " << i << ":\n" << lidar_set.lidarScans[i].R_ref << "\n" << lidar_set.lidarScans[i].t_ref << std::endl;
 	}
@@ -433,16 +489,16 @@ int main(int argc, char** argv)
 			}
 		}
 	}
-
-
+	//backend.addSmartFactors(img_set, l_set.size());
+	
 	double init_err = backend.printError();
-	std::cout << "initial graph error = " << init_err<< std::endl;
+	
 	backend.solve();
 	
 	double opt_err = backend.printError();
 
 	
-	
+	std::cout << "initial graph error = " << init_err<< std::endl;
     std::cout << "final graph error = " << opt_err << std::endl;
 	
 	backend.writePose2File("/home/zimol/Data/test.txt");
